@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket demo</title>
+    <!--    <script src="https://d3js.org/d3.v3.min.js"></script>-->
+    <!--    <script src="js/epoch.min.js"></script>-->
+    <!--    <link rel="stylesheet" type="text/css" href="css/epoch.min.css">-->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.3.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@1.27.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.1.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0"></script>
+</head>
+<body>
+<canvas id="myChart" ></canvas>
+<script>
+var ctx = document.getElementById('myChart').getContext('2d');
+
+const decimation = {
+  enabled: true,
+  algorithm: 'min-max',
+};
+
+const myChart = new Chart(ctx, {
+  type: 'line',             // 'line', 'bar', 'bubble' and 'scatter' types are supported
+  data: {
+    datasets: [{
+      data: [],
+      parsing: false,
+      fill: false,
+      pointRadius: 1,
+    }]
+  },
+  options: {
+    animation: false,
+    parsing: false,
+    plugins: {
+      decimation: decimation,
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom'
+      },
+      y: {
+        type: 'linear',
+        position: 'left'
+      }
+    }
+  }
+});
+</script>
+<script>
+            var ws = new WebSocket("ws://127.0.0.1:5678/");
+            console.log("begin ws");
+                var d = new Date();
+                var lastUpdate = Date.now();
+                var lastLap = -1;
+//console.log(lastUpdate);
+            ws.onmessage = function (event) {
+                obj = JSON.parse(event.data);
+                x1 = obj.DistanceTraveled;
+                y1 = obj.CurrentEngineRpm;
+                d = myChart.data.datasets[0].data;
+
+                if (obj.LapNumber != lastLap) {
+                  lastLap = obj.LapNumber;
+                  myChart.data.datasets[0].data = [];
+                }
+
+                if (d.length > 3600) {
+                   d.shift();
+                }
+//                console.log(x1 + ", " + y1);
+                myChart.data.datasets[0].data.push({
+                    x: x1,
+                    y: y1
+                  });
+
+                var d = new Date();
+                var n = Date.now();
+//console.log(n);
+                if (n > lastUpdate + 250 ) {
+                  console.log("updated");
+                  myChart.update('quiet');
+                  lastUpdate = n;
+                }
+            };
+
+
+</script>
+
+</body>
+</html>
