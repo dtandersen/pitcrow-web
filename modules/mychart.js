@@ -1,6 +1,6 @@
 const decimation = {
   enabled: true,
-  algorithm: 'min-max',
+  algorithm: 'lttb',
 };
 
 var ctx = document.getElementById('myChart').getContext('2d');
