@@ -3,11 +3,11 @@ const decimation = {
   algorithm: 'lttb',
 };
 
-export function create_chart(chartId) {
+export function create_chart(chartId, type) {
   let ctx = document.getElementById(chartId).getContext('2d');
 
   let myChart = new Chart(ctx, {
-    type: 'line',
+    type: type,
     data: {
       datasets: [{
           data: [],
@@ -50,7 +50,9 @@ export function create_chart(chartId) {
       scales: {
         x: {
           type: 'linear',
-          position: 'bottom'
+          position: 'bottom',
+          min: -2,
+          max: 2
         },
         y: {
           type: 'linear',

@@ -4,7 +4,7 @@ export function init_ws(endpoint, watchers) {
   ws.onmessage = function(event) {
     try {
       var telemetry = JSON.parse(event.data);
-      console.log(telemetry);
+
       for (const watcher of watchers) {
         watcher(telemetry);
       }

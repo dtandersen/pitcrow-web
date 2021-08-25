@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Forza 7 Telemetry</title>
+  <!--    <script src="https://d3js.org/d3.v3.min.js"></script>-->
+  <!--    <script src="js/epoch.min.js"></script>-->
+  <!--    <link rel="stylesheet" type="text/css" href="css/epoch.min.css">-->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.3.2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@1.27.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.1.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/regression@2.0.1/dist/regression.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.5.21/dist/vue.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/purecss@2.0.6/build/pure-min.css" integrity="sha384-Uu6IeWbM+gzNVXJcM9XV3SohHtmWE+3VGi496jvgX1jyvDTXfdK+rfZc8C1Aehk5" crossorigin="anonymous">
+</head>
+
+<body>
+  <div>
+    <div id="app">
+      <p>Lap {{ lapNumber }}</p>
+      <div class="pure-g">
+        <div class="pure-u-1-2">Front Left {{ telemetry.SuspensionTravelMetersFrontLeft * 1000 | fixed1 }} mm</div>
+        <div class="pure-u-1-2">Front Right {{ telemetry.SuspensionTravelMetersFrontLeft * 1000 | fixed1 }} mm</div>
+        <div class="pure-u-1-2">gradient {{ gradient | fixed3 }} deg/g</div>
+        <div class="pure-u-1-2"></div>
+      </div>
+      <p>
+        <!-- {{ telemetry }} -->
+      </p>
+    </div>
+    <div>
+      <canvas id="myChart"></canvas>
+    </div>
+  </div>
+  <script type="module" src="modules/ws.js"></script>
+  <script type="module">
+    import {
+      ChartManager
+    } from './modules/cmanager.js';
+    import {
+      init_ws
+    } from './modules/ws.js';
+    // import * as Dashboard from './modules/dashboard.js';
+    // import { TelemetryManager } from './modules/telemetry.js';
+    import * as WS from './modules/ws.js';
+    import * as BrakeChart from './modules/chartv2.js';
+    var endpoint = "ws://127.0.0.1:5678/";
+    var fps = 1;
+    // let telemetryManager = new TelemetryManager(myChart);
+
+    Vue.filter('fixed3', function(value) {
+      if (typeof value !== "number") {
+        return value;
+      }
+      return value.toFixed(3);
+    });
+
+    Vue.filter('fixed2', function(value) {
+      if (typeof value !== "number") {
+        return value;
+      }
+      return value.toFixed(2);
+    });
+
+    Vue.filter('fixed1', function(value) {
+      if (typeof value !== "number") {
+        return value;
+      }
+      return value.toFixed(1);
+    });
+    var myChart = BrakeChart.create_chart('myChart', 'scatter')
+    var cm = new ChartManager(myChart, 3600, 1);
+    export const app = new Vue({
+      el: '#app',
+      data: {
+        message: 'Hello Vue.js!',
+        lapNumber: 0,
+        telemetry: {},
+        frontLeftLock: 0,
+        frontRightLock: 0,
+        rearLeftLock: 0,
+        rearRightLock: 0,
+        gradient: 0,
+      },
+      watch: {
+        'telemetry.TireSlipRatioFrontLeft': function(newValue, oldValue) {
+          // console.log("old=" + oldValue + ", new=" + newValue);
+          if (this.slipped(newValue, oldValue)) {
+            this.frontLeftLock = this.telemetry.CurrentRaceTime;
+          }
+        },
+        'telemetry.TireSlipRatioFrontRight': function(newValue, oldValue) {
+          // console.log("old=" + oldValue + ", new=" + newValue);
+          if (this.slipped(newValue, oldValue)) {
+            this.frontRightLock = this.telemetry.CurrentRaceTime;
+          }
+        },
+        'telemetry.TireSlipRatioRearLeft': function(newValue, oldValue) {
+          // console.log("old=" + oldValue + ", new=" + newValue);
+          if (this.slipped(newValue, oldValue)) {
+            this.rearLeftLock = this.telemetry.CurrentRaceTime;
+          }
+        },
+        'telemetry.TireSlipRatioRearRight': function(newValue, oldValue) {
+          // console.log("old=" + oldValue + ", new=" + newValue);
+          if (this.slipped(newValue, oldValue)) {
+            this.rearRightLock = this.telemetry.CurrentRaceTime;
+          }
+        }
+      },
+      methods: {
+        slipped: function(newValue, oldValue) {
+          return Math.abs(oldValue) < 3 && Math.abs(newValue) >= 3;
+        }
+      }
+    })
+
+    function slipping(v) {
+      if (Math.abs(v) >= 1) return 1;
+      return 0;
+    }
+    let width_mm = 1627;
+    WS.init_ws(endpoint, [
+      function(telemetry) {
+        app.telemetry = telemetry
+      },
+      function(telemetry) {
+
+
+        let opposite = telemetry.SuspensionTravelMetersFrontLeft - telemetry.SuspensionTravelMetersFrontRight;
+        let adjacent = 1.627;
+        let tan = opposite / adjacent;
+        let radians = Math.atan(tan);
+        let degrees = radians * (180 / Math.PI);
+        // cm.add_value(0, telemetry.AccelerationX, telemetry.NormalizedSuspensionTravelFrontLeft);
+        // cm.add_value(1, telemetry.AccelerationX, telemetry.NormalizedSuspensionTravelFrontRight);
+        cm.add_value(0, telemetry.AccelerationX / 9.8, degrees);
+        cm.add_value(2,  telemetry.AccelerationX / 9.8, opposite);
+        // cm.add_value(2,  telemetry.AccelerationX, telemetry.SuspensionTravelMetersFrontLeft * 10);
+        // cm.add_value(3,  telemetry.AccelerationX, telemetry.SuspensionTravelMetersFrontRight * 10);
+
+        const clean_data = myChart.data.datasets[0].data
+          .filter(({
+            x,
+            y
+          }) => {
+            return (
+              typeof x === typeof y && // filter out one string & one number
+              !isNaN(x) && // filter out `NaN`
+              !isNaN(y) &&
+              Math.abs(x) !== Infinity &&
+              Math.abs(y) !== Infinity
+            );
+          })
+          .map(({
+            x,
+            y
+          }) => {
+            return [x, y]; // we need a list of [[x1, y1], [x2, y2], ...]
+          });
+        // console.log(clean_data);
+        // https://stackoverflow.com/questions/60622195/how-to-draw-a-linear-regression-line-in-chart-js
+        const my_regression = regression.linear(
+          clean_data
+        );
+
+        const useful_points = my_regression.points.map(([x, y]) => {
+          return {
+            x: x,
+            y: y
+          };
+          // or {x, y}, depending on whether you just want y-coords for a 'linear' plot
+          // or x&y for a 'scatterplot'
+        })
+
+        myChart.data.datasets[1].data = useful_points;
+        // console.log(useful_points);
+        app.gradient = my_regression.equation[0];
+        cm.update();
+      }
+    ]);
+  </script>
+  <script src="js/index.js"></script>
+</body>
+
+</html>
