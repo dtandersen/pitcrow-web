@@ -134,7 +134,8 @@
 
 
         let opposite = telemetry.SuspensionTravelMetersFrontLeft - telemetry.SuspensionTravelMetersFrontRight;
-        let adjacent = 1.627;
+        // let adjacent = 1.627;
+        let adjacent = 1.79832;
         let tan = opposite / adjacent;
         let radians = Math.atan(tan);
         let degrees = radians * (180 / Math.PI);
