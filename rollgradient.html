@@ -46,11 +46,12 @@
     import {
       init_ws
     } from './modules/ws.js';
+    import * as Config from './modules/config.js';
     // import * as Dashboard from './modules/dashboard.js';
     // import { TelemetryManager } from './modules/telemetry.js';
     import * as WS from './modules/ws.js';
     import * as BrakeChart from './modules/chartv2.js';
-    var endpoint = "ws://127.0.0.1:5678/";
+    var endpoint = Config.telemetry_endpoint;
     var fps = 1;
     // let telemetryManager = new TelemetryManager(myChart);
 
@@ -126,6 +127,17 @@
       return 0;
     }
     let width_mm = 1627;
+
+    function degreesx(x0, x1) {
+      let opposite = x0 - x1;
+      // let adjacent = 1.627;
+      let adjacent = 1.79832;
+      let tan = opposite / adjacent;
+      let radians = Math.atan(tan);
+      let degrees = radians * (180 / Math.PI);
+      return degrees;
+    }
+
     WS.init_ws(endpoint, [
       function(telemetry) {
         app.telemetry = telemetry
@@ -133,16 +145,21 @@
       function(telemetry) {
 
 
-        let opposite = telemetry.SuspensionTravelMetersFrontLeft - telemetry.SuspensionTravelMetersFrontRight;
-        // let adjacent = 1.627;
-        let adjacent = 1.79832;
-        let tan = opposite / adjacent;
-        let radians = Math.atan(tan);
-        let degrees = radians * (180 / Math.PI);
+        // let opposite = telemetry.SuspensionTravelMetersFrontLeft - telemetry.SuspensionTravelMetersFrontRight;
+        // // let adjacent = 1.627;
+        // let adjacent = 1.79832;
+        // let tan = opposite / adjacent;
+        // let radians = Math.atan(tan);
+        // let degrees = radians * (180 / Math.PI);
+
+        let roll_grad_front = degreesx(telemetry.SuspensionTravelMetersFrontLeft, telemetry.SuspensionTravelMetersFrontRight);
+        let roll_grad_rear = degreesx(telemetry.SuspensionTravelMetersRearLeft, telemetry.SuspensionTravelMetersRearRight);
+
         // cm.add_value(0, telemetry.AccelerationX, telemetry.NormalizedSuspensionTravelFrontLeft);
         // cm.add_value(1, telemetry.AccelerationX, telemetry.NormalizedSuspensionTravelFrontRight);
-        cm.add_value(0, telemetry.AccelerationX / 9.8, degrees);
-        cm.add_value(2,  telemetry.AccelerationX / 9.8, opposite);
+        cm.add_value(0, telemetry.AccelerationX / 9.8, roll_grad_front);
+        cm.add_value(2, telemetry.AccelerationX / 9.8, roll_grad_rear);
+        // cm.add_value(2, telemetry.AccelerationX / 9.8, opposite);
         // cm.add_value(2,  telemetry.AccelerationX, telemetry.SuspensionTravelMetersFrontLeft * 10);
         // cm.add_value(3,  telemetry.AccelerationX, telemetry.SuspensionTravelMetersFrontRight * 10);
 
